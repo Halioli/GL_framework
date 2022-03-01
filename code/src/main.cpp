@@ -16,29 +16,35 @@ extern void GLcleanup();
 extern void GLrender(float dt);
 
 //////
-namespace {
+namespace 
+{
 	const int expected_fps = 30;
 	const double expected_frametime = 1.0 / expected_fps;
 	const uint32_t expected_frametime_ms = (uint32_t) (1e3 * expected_frametime);
 	uint32_t prev_frametimestamp = 0;
 	uint32_t curr_frametimestamp = 0;
 
-	void waitforFrameEnd() {
+	void waitforFrameEnd() 
+	{
 		curr_frametimestamp = SDL_GetTicks();
 		DWORD wait = 0;
-		if ((curr_frametimestamp - prev_frametimestamp) < expected_frametime_ms) {
+		if ((curr_frametimestamp - prev_frametimestamp) < expected_frametime_ms) 
+		{
 			wait = expected_frametime_ms - (curr_frametimestamp - prev_frametimestamp);
 		}
-		if(wait > 0) {
+		if(wait > 0) 
+		{
 			Sleep(wait);
 		}
 		prev_frametimestamp = SDL_GetTicks();
 	}
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
 	//Init GLFW
-	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+	if (SDL_Init(SDL_INIT_VIDEO) != 0) 
+	{
 		SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
 		SDL_Quit();
 		return -1;
@@ -56,7 +62,9 @@ int main(int argc, char** argv) {
 
 	mainwindow = SDL_CreateWindow("GL_framework", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-		if (!mainwindow) { /* Die if creation failed */
+		if (!mainwindow) 
+		{ 
+			/* Die if creation failed */
 			SDL_Log("Couldn't create SDL window: %s", SDL_GetError());
 			SDL_Quit();
 			return -1;
@@ -67,7 +75,8 @@ int main(int argc, char** argv) {
 
 	// Init GLEW
 	GLenum err = glewInit();
-	if(GLEW_OK != err) {
+	if(GLEW_OK != err) 
+	{
 		SDL_Log("Glew error: %s\n", glewGetErrorString(err));
 	}
 	SDL_Log("Status: Using GLEW %s\n", glewGetString(GLEW_VERSION));
@@ -84,13 +93,17 @@ int main(int argc, char** argv) {
 	ImGui_ImplSdlGL3_Init(mainwindow);
 
 	bool quit_app = false;
-	while (!quit_app) {
+	while (!quit_app) 
+	{
 		SDL_Event eve;
-		while (SDL_PollEvent(&eve)) {
+		while (SDL_PollEvent(&eve)) 
+		{
 			ImGui_ImplSdlGL3_ProcessEvent(&eve);
-			switch (eve.type) {
+			switch (eve.type) 
+			{
 			case SDL_WINDOWEVENT:
-				if (eve.window.event == SDL_WINDOWEVENT_RESIZED) {
+				if (eve.window.event == SDL_WINDOWEVENT_RESIZED) 
+				{
 					GLResize(eve.window.data1, eve.window.data2);
 				}
 				break;
@@ -103,7 +116,8 @@ int main(int argc, char** argv) {
 
 		ImGuiIO& io = ImGui::GetIO();
 		GUI();
-		if(!io.WantCaptureMouse) {
+		if(!io.WantCaptureMouse) 
+		{
 			MouseEvent ev = {io.MousePos.x, io.MousePos.y, 
 				(io.MouseDown[0] ? MouseEvent::Button::Left : 
 				(io.MouseDown[1] ? MouseEvent::Button::Right :

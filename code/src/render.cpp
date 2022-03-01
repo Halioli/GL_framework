@@ -16,33 +16,37 @@ GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name 
 void linkProgram(GLuint program);
 
 
-
 ///////// fw decl
-namespace ImGui {
+namespace ImGui 
+{
 	void Render();
 }
-namespace Axis {
+
+namespace Axis 
+{
 	void setupAxis();
 	void cleanupAxis();
 	void drawAxis();
 }
 
-namespace Exercise {
+namespace Exercise 
+{
 	GLuint program;
-	GLuint VAO;
+	GLuint VAO, VBO;
+
+	float vertices[] = {
+		-0.5f, -0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		 0.0f,  0.5f, 0.0f
+	};
 
 	// A vertex shader that assigns a static position to the vertex
 	static const GLchar* vertex_shader_source[] = {
 		"#version 330\n"
+		"layout (location = 0) in vec3 aPos;"
 		"\n"
 		"void main(){\n"
-			"const vec4 vertices[3] = vec4[3]("
-				"vec4( 0, 0.5, 0.5, 1.0), "
-				"vec4( -0.25, 0, 0.5, 1.0),"
-				"vec4( 0.25, 0, 0.5, 1.0)"
-			");"
-			"\n"
-			"gl_Position = vertices[gl_VertexID];\n"
+			"gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);"
 			"\n"
 		"}"
 	};
@@ -52,54 +56,98 @@ namespace Exercise {
 		"#version 330\n"
 		"\n"
 		"out vec4 color;\n"
+		"uniform vec4 triangleColor;\n"
 		"void main(){\n"
-			"color = vec4(0.0, 0.8, 1.0, 1.0);\n"
+			"color = triangleColor;\n"
 		"}"
 	};
 
 
-	void init() {
-		// Compile the shaders
-		GLuint vertex_shader = compileShader(vertex_shader_source[0], GL_VERTEX_SHADER, "Exercise_vertex_shader");
-		/*GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	void init() 
+	{
+		//Inicialitzar ID del Shader 
+		GLuint vertex_shader;
+		GLuint fragment_shader;
+
+		//Crear ID Shader 
+		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+
+		//Cargar datos del Shader en la ID
 		glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
-		glCompileShader(vertex_shader);*/
-
-		GLuint fragment_shader = compileShader(fragment_shader_source[0], GL_FRAGMENT_SHADER, "Exercise_fragment_shader");
-		/*GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 		glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
-		glCompileShader(fragment_shader);*/
 
+		//Operar con el Shader -> Pilla la string que te paso y traducelo a binario
+		compileShader(vertex_shader_source[0], GL_VERTEX_SHADER, "vertex");
+		compileShader(fragment_shader_source[0], GL_FRAGMENT_SHADER, "fragment");
 
+		//Crear programa y enlazarlo con los Shaders (Operaciones Bind())
 		program = glCreateProgram();
-
 		glAttachShader(program, vertex_shader);
 		glAttachShader(program, fragment_shader);
-		//glLinkProgram(program);
+
 		linkProgram(program);
 
-
+		// Destroy
 		glDeleteShader(vertex_shader);
 		glDeleteShader(fragment_shader);
 
-
+		//Create the vertex array object
+		//This object maintains the state related to the input of the OpenGL
 		glGenVertexArrays(1, &VAO);
 		glBindVertexArray(VAO);
 
+		// Create the vertext buffer object
+		// It contains arbitrary data for the vertices. (coordinates)
+		glGenBuffers(1, &VBO);
+
+		// Until we bind another buffer, calls related 
+		// to the array buffer will use VBO
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+		// Copy the data to the array buffer
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+		// Specify the layout of the arbitrary data setting
+		glVertexAttribPointer(
+			0,					// Set same as specified in the shader
+			3,					// Size of the vertex attribute
+			GL_FLOAT,			// Specifies the data type of each component in the array
+			GL_FALSE,			// Data needs to be normalized? (NO)
+			3 * sizeof(float),	// Stride; byte offset between consecutive vertex attributes
+			(void*)0			// Offset of where the position data begins in the buffer
+		);
+
+		// Once specified, we enable it
+		glEnableVertexAttribArray(0);
+
+		// Clean
 		glBindVertexArray(0);
 	}
 
-	void cleanup() {
+	void cleanup() 
+	{
 		glDeleteProgram(program);
 		glDeleteVertexArrays(1, &VAO);
+		glDeleteBuffers(1, &VBO);
 	}
 
-	void render() {
+	void render()
+	{
 		glPointSize(40.0f);
 		glBindVertexArray(VAO);
 		glUseProgram(program);
+
+		time_t currentTime = SDL_GetTicks() / 1000;
+		const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f, (float)cos(currentTime) * 0.5f + 0.5f, 0.0f, 1.0f };
+
+		glUniform4f(glGetUniformLocation(program, "triangleColor"), color[0], color[1], color[2], color[3]);
+
 		glDrawArrays(GL_TRIANGLES, 0, 3);
-		//glDrawArrays(GL_LINE_LOOP, 0, 3);
+		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		//glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+		//glDrawArrays(GL_QUADS, 0, 4);
+		//glDrawArrays(GL_LINE_LOOP, 0, 4);
 		//glDrawArrays(GL_LINES, 0, 3);
 		//glDrawArrays(GL_LINE_STRIP, 0, 6);
 	}
@@ -107,7 +155,8 @@ namespace Exercise {
 
 ////////////////
 
-namespace RenderVars {
+namespace RenderVars 
+{
 	const float FOV = glm::radians(65.f);
 	const float zNear = 1.f;
 	const float zFar = 50.f;
@@ -118,7 +167,8 @@ namespace RenderVars {
 	glm::mat4 _inv_modelview;
 	glm::vec4 _cameraPoint;
 
-	struct prevMouse {
+	struct prevMouse 
+	{
 		float lastx, lasty;
 		MouseEvent::Button button = MouseEvent::Button::None;
 		bool waspressed = false;
@@ -129,17 +179,21 @@ namespace RenderVars {
 }
 namespace RV = RenderVars;
 
-void GLResize(int width, int height) {
+void GLResize(int width, int height) 
+{
 	glViewport(0, 0, width, height);
 	if (height != 0) RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
 	else RV::_projection = glm::perspective(RV::FOV, 0.f, RV::zNear, RV::zFar);
 }
 
-void GLmousecb(MouseEvent ev) {
-	if (RV::prevMouse.waspressed && RV::prevMouse.button == ev.button) {
+void GLmousecb(MouseEvent ev) 
+{
+	if (RV::prevMouse.waspressed && RV::prevMouse.button == ev.button) 
+	{
 		float diffx = ev.posx - RV::prevMouse.lastx;
 		float diffy = ev.posy - RV::prevMouse.lasty;
-		switch (ev.button) {
+		switch (ev.button) 
+		{
 		case MouseEvent::Button::Left: // ROTATE
 			RV::rota[0] += diffx * 0.005f;
 			RV::rota[1] += diffy * 0.005f;
@@ -154,7 +208,8 @@ void GLmousecb(MouseEvent ev) {
 		default: break;
 		}
 	}
-	else {
+	else 
+	{
 		RV::prevMouse.button = ev.button;
 		RV::prevMouse.waspressed = true;
 	}
@@ -163,13 +218,15 @@ void GLmousecb(MouseEvent ev) {
 }
 
 //////////////////////////////////////////////////
-GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name) {
+GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name) 
+{
 	GLuint shader = glCreateShader(shaderType);
 	glShaderSource(shader, 1, &shaderStr, NULL);
 	glCompileShader(shader);
 	GLint res;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &res);
-	if (res == GL_FALSE) {
+	if (res == GL_FALSE) 
+	{
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &res);
 		char* buff = new char[res];
 		glGetShaderInfoLog(shader, res, &res, buff);
@@ -180,11 +237,13 @@ GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name)
 	}
 	return shader;
 }
-void linkProgram(GLuint program) {
+void linkProgram(GLuint program) 
+{
 	glLinkProgram(program);
 	GLint res;
 	glGetProgramiv(program, GL_LINK_STATUS, &res);
-	if (res == GL_FALSE) {
+	if (res == GL_FALSE) 
+	{
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &res);
 		char* buff = new char[res];
 		glGetProgramInfoLog(program, res, &res, buff);
@@ -194,7 +253,8 @@ void linkProgram(GLuint program) {
 }
 
 ////////////////////////////////////////////////// AXIS
-namespace Axis {
+namespace Axis 
+{
 	GLuint AxisVao;
 	GLuint AxisVbo[3];
 	GLuint AxisShader[2];
@@ -208,6 +268,7 @@ namespace Axis {
 		0.0, 0.0, 0.0,
 		0.0, 0.0, 1.0
 	};
+
 	float AxisColors[] = {
 		1.0, 0.0, 0.0, 1.0,
 		1.0, 0.0, 0.0, 1.0,
@@ -216,30 +277,34 @@ namespace Axis {
 		0.0, 0.0, 1.0, 1.0,
 		0.0, 0.0, 1.0, 1.0
 	};
+
 	GLubyte AxisIdx[] = {
 		0, 1,
 		2, 3,
 		4, 5
 	};
+
 	const char* Axis_vertShader =
 		"#version 330\n\
-in vec3 in_Position;\n\
-in vec4 in_Color;\n\
-out vec4 vert_color;\n\
-uniform mat4 mvpMat;\n\
-void main() {\n\
-	vert_color = in_Color;\n\
-	gl_Position = mvpMat * vec4(in_Position, 1.0);\n\
-}";
+		in vec3 in_Position;\n\
+		in vec4 in_Color;\n\
+		out vec4 vert_color;\n\
+		uniform mat4 mvpMat;\n\
+		void main() {\n\
+			vert_color = in_Color;\n\
+			gl_Position = mvpMat * vec4(in_Position, 1.0);\n\
+		}";
+
 	const char* Axis_fragShader =
 		"#version 330\n\
-in vec4 vert_color;\n\
-out vec4 out_Color;\n\
-void main() {\n\
-	out_Color = vert_color;\n\
-}";
+		in vec4 vert_color;\n\
+		out vec4 out_Color;\n\
+		void main() {\n\
+			out_Color = vert_color;\n\
+		}";
 
-	void setupAxis() {
+	void setupAxis() 
+	{
 		glGenVertexArrays(1, &AxisVao);
 		glBindVertexArray(AxisVao);
 		glGenBuffers(3, AxisVbo);
@@ -271,7 +336,9 @@ void main() {\n\
 		glBindAttribLocation(AxisProgram, 1, "in_Color");
 		linkProgram(AxisProgram);
 	}
-	void cleanupAxis() {
+
+	void cleanupAxis() 
+	{
 		glDeleteBuffers(3, AxisVbo);
 		glDeleteVertexArrays(1, &AxisVao);
 
@@ -279,7 +346,9 @@ void main() {\n\
 		glDeleteShader(AxisShader[0]);
 		glDeleteShader(AxisShader[1]);
 	}
-	void drawAxis() {
+
+	void drawAxis() 
+	{
 		glBindVertexArray(AxisVao);
 		glUseProgram(AxisProgram);
 		glUniformMatrix4fv(glGetUniformLocation(AxisProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RV::_MVP));
@@ -291,7 +360,8 @@ void main() {\n\
 }
 
 ////////////////////////////////////////////////// CUBE
-namespace Cube {
+namespace Cube 
+{
 	GLuint cubeVao;
 	GLuint cubeVbo[3];
 	GLuint cubeShaders[2];
@@ -319,6 +389,7 @@ namespace Cube {
 		glm::vec3(halfW,  halfW,  halfW),
 		glm::vec3(halfW,  halfW, -halfW)
 	};
+
 	glm::vec3 norms[] = {
 		glm::vec3(0.f, -1.f,  0.f),
 		glm::vec3(0.f,  1.f,  0.f),
@@ -336,6 +407,7 @@ namespace Cube {
 		verts[0], verts[4], verts[3], verts[7],
 		verts[1], verts[2], verts[5], verts[6]
 	};
+
 	glm::vec3 cubeNorms[] = {
 		norms[0], norms[0], norms[0], norms[0],
 		norms[1], norms[1], norms[1], norms[1],
@@ -344,6 +416,7 @@ namespace Cube {
 		norms[4], norms[4], norms[4], norms[4],
 		norms[5], norms[5], norms[5], norms[5]
 	};
+
 	GLubyte cubeIdx[] = {
 		0, 1, 2, 3, UCHAR_MAX,
 		4, 5, 6, 7, UCHAR_MAX,
@@ -355,26 +428,29 @@ namespace Cube {
 
 	const char* cube_vertShader =
 		"#version 330\n\
-in vec3 in_Position;\n\
-in vec3 in_Normal;\n\
-out vec4 vert_Normal;\n\
-uniform mat4 objMat;\n\
-uniform mat4 mv_Mat;\n\
-uniform mat4 mvpMat;\n\
-void main() {\n\
-	gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-	vert_Normal = mv_Mat * objMat * vec4(in_Normal, 0.0);\n\
-}";
+		in vec3 in_Position;\n\
+		in vec3 in_Normal;\n\
+		out vec4 vert_Normal;\n\
+		uniform mat4 objMat;\n\
+		uniform mat4 mv_Mat;\n\
+		uniform mat4 mvpMat;\n\
+		void main() {\n\
+			gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
+			vert_Normal = mv_Mat * objMat * vec4(in_Normal, 0.0);\n\
+		}";
+
 	const char* cube_fragShader =
 		"#version 330\n\
-in vec4 vert_Normal;\n\
-out vec4 out_Color;\n\
-uniform mat4 mv_Mat;\n\
-uniform vec4 color;\n\
-void main() {\n\
-	out_Color = vec4(color.xyz * dot(vert_Normal, mv_Mat*vec4(0.0, 1.0, 0.0, 0.0)) + color.xyz * 0.3, 1.0 );\n\
-}";
-	void setupCube() {
+		in vec4 vert_Normal;\n\
+		out vec4 out_Color;\n\
+		uniform mat4 mv_Mat;\n\
+		uniform vec4 color;\n\
+		void main() {\n\
+			out_Color = vec4(color.xyz * dot(vert_Normal, mv_Mat*vec4(0.0, 1.0, 0.0, 0.0)) + color.xyz * 0.3, 1.0 );\n\
+		}";
+
+	void setupCube() 
+	{
 		glGenVertexArrays(1, &cubeVao);
 		glBindVertexArray(cubeVao);
 		glGenBuffers(3, cubeVbo);
@@ -407,7 +483,9 @@ void main() {\n\
 		glBindAttribLocation(cubeProgram, 1, "in_Normal");
 		linkProgram(cubeProgram);
 	}
-	void cleanupCube() {
+
+	void cleanupCube() 
+	{
 		glDeleteBuffers(3, cubeVbo);
 		glDeleteVertexArrays(1, &cubeVao);
 
@@ -415,10 +493,14 @@ void main() {\n\
 		glDeleteShader(cubeShaders[0]);
 		glDeleteShader(cubeShaders[1]);
 	}
-	void updateCube(const glm::mat4& transform) {
+
+	void updateCube(const glm::mat4& transform) 
+	{
 		objMat = transform;
 	}
-	void drawCube() {
+
+	void drawCube() 
+	{
 		glEnable(GL_PRIMITIVE_RESTART);
 		glBindVertexArray(cubeVao);
 		glUseProgram(cubeProgram);
@@ -437,7 +519,8 @@ void main() {\n\
 /////////////////////////////////////////////////sss
 
 
-void GLinit(int width, int height) {
+void GLinit(int width, int height) 
+{
 	glViewport(0, 0, width, height);
 	glClearColor(0.2f, 0.2f, 0.2f, 1.f);
 	glClearDepth(1.f);
@@ -461,7 +544,8 @@ void GLinit(int width, int height) {
 	/////////////////////////////////////////////////////////
 }
 
-void GLcleanup() {
+void GLcleanup() 
+{
 	//Axis::cleanupAxis();
 	//Cube::cleanupCube();
 
@@ -474,12 +558,13 @@ void GLcleanup() {
 	/////////////////////////////////////////////////////////
 }
 
-void GLrender(float dt) {
+void GLrender(float dt) 
+{
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	time_t currentTime = SDL_GetTicks() / 1000;
 
-	const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f, (float)cos(currentTime) * 0.5f + 0.5f, 0.0f, 1.0f };
+	const GLfloat color[] = { 0.5f, 0.5f, 0.5f, 1.0f }; //{ (float)sin(currentTime) * 0.5f + 0.5f, (float)cos(currentTime) * 0.5f + 0.5f, 0.0f, 1.0f };
 	glClearBufferfv(GL_COLOR, 0, color);
 
 	RV::_modelView = glm::mat4(1.f);
@@ -501,7 +586,8 @@ void GLrender(float dt) {
 }
 
 
-void GUI() {
+void GUI() 
+{
 	bool show = true;
 	ImGui::Begin("Physics Parameters", &show, 0);
 
@@ -521,7 +607,8 @@ void GUI() {
 
 	// Example code -- ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
 	bool show_test_window = false;
-	if (show_test_window) {
+	if (show_test_window) 
+	{
 		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
 		ImGui::ShowTestWindow(&show_test_window);
 	}
