@@ -237,6 +237,7 @@ GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name)
 	}
 	return shader;
 }
+
 void linkProgram(GLuint program) 
 {
 	glLinkProgram(program);
@@ -504,10 +505,30 @@ namespace Cube
 		glEnable(GL_PRIMITIVE_RESTART);
 		glBindVertexArray(cubeVao);
 		glUseProgram(cubeProgram);
+		
+		// CUBE 01
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		glUniform4f(glGetUniformLocation(cubeProgram, "color"), 0.1f, 1.f, 1.f, 0.f);
+		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
+
+		// CUBE 02
+		float time = ImGui::GetTime();
+
+		// Change position (transalte)
+		glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(2.0f, cos(time) * 2.0f + 2.0f, 2.0f));
+
+		// Change size (scale)
+		float scaleRes = ((sin(time) * 2.0f + 2.0f) + 1) / 2;
+		glm::mat4 cubeScaleMatrix = glm::scale(glm::mat4(), glm::vec3(scaleRes, scaleRes, scaleRes));
+
+		// Set random color
+		const GLfloat cubeColor[] = { sin(time) * 0.5f + 0.5f, cos(time) * 0.5f + 0.5f, 0.0f, 1.0f };
+
+		// "Create" 2nd cube
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix * cubeScaleMatrix));
+		glUniform4f(glGetUniformLocation(cubeProgram, "color"), cubeColor[0], cubeColor[1], cubeColor[2], 0.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 
 		glUseProgram(0);
@@ -516,7 +537,7 @@ namespace Cube
 	}
 }
 
-/////////////////////////////////////////////////sss
+/////////////////////////////////////////////////
 
 
 void GLinit(int width, int height) 
@@ -531,30 +552,28 @@ void GLinit(int width, int height)
 	RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
 
 	// Setup shaders & geometry
-	//Axis::setupAxis();
-	//Cube::setupCube();
+	Axis::setupAxis();
+	Cube::setupCube();
 
 
 	/////////////////////////////////////////////////////TODO
 	// Do your init code here
 	// ...
+	//Exercise::init();
 	// ...
-	// ...
-	Exercise::init();
 	/////////////////////////////////////////////////////////
 }
 
 void GLcleanup() 
 {
-	//Axis::cleanupAxis();
-	//Cube::cleanupCube();
+	Axis::cleanupAxis();
+	Cube::cleanupCube();
 
 	/////////////////////////////////////////////////////TODO
 	// Do your cleanup code here
 	// ...
+	//Exercise::cleanup();
 	// ...
-	// ...
-	Exercise::cleanup();
 	/////////////////////////////////////////////////////////
 }
 
@@ -574,12 +593,12 @@ void GLrender(float dt)
 
 	RV::_MVP = RV::_projection * RV::_modelView;
 
-	//Axis::drawAxis();
-	//Cube::drawCube();
+	Axis::drawAxis();
+	Cube::drawCube();
 
 	/////////////////////////////////////////////////////TODO
 	// Do your render code here
-	Exercise::render();
+	//Exercise::render();
 	/////////////////////////////////////////////////////////
 
 	ImGui::Render();
