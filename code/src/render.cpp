@@ -517,17 +517,24 @@ namespace Cube
 		float time = ImGui::GetTime();
 
 		// Change position (transalte)
-		glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(2.0f, cos(time) * 2.0f + 2.0f, 2.0f));
+		glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, cos(time) * 2.0f + 2.0f, 2.0f));//2.0f, cos(time) * 2.0f + 2.0f, 2.0f));
 
 		// Change size (scale)
 		float scaleRes = ((sin(time) * 2.0f + 2.0f) + 1) / 2;
 		glm::mat4 cubeScaleMatrix = glm::scale(glm::mat4(), glm::vec3(scaleRes, scaleRes, scaleRes));
 
+		// Change y-rotation (rotate)
+		float rotateAngle = time; //1.0f * (float)sin(3.0f * time);
+		glm::mat4 cubeRotateMatrix = glm::rotate(glm::mat4(), rotateAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+
+		// Rotate along the 1st cube (rotate)
+		glm::mat4 cubeToCubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(1.0f, 0.0f, 3.0f));
+
 		// Set random color
 		const GLfloat cubeColor[] = { sin(time) * 0.5f + 0.5f, cos(time) * 0.5f + 0.5f, 0.0f, 1.0f };
 
 		// "Create" 2nd cube
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix * cubeScaleMatrix));
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix * cubeRotateMatrix * cubeToCubeTranslateMatrix * cubeScaleMatrix));
 		glUniform4f(glGetUniformLocation(cubeProgram, "color"), cubeColor[0], cubeColor[1], cubeColor[2], 0.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 
@@ -550,6 +557,7 @@ void GLinit(int width, int height)
 	glEnable(GL_CULL_FACE);
 
 	RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
+	//RV::_projection = glm::ortho(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
 
 	// Setup shaders & geometry
 	Axis::setupAxis();
