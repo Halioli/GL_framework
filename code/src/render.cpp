@@ -3,13 +3,14 @@
 #include <glm\gtc\matrix_transform.hpp>
 #include <cstdio>
 #include <cassert>
+#include <vector>
 
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_sdl_gl3.h>
 
 #include "GL_framework.h"
-
 #include "SDL_timer.h"
+#include "LoadOBJ.h"
 
 
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "");
@@ -27,6 +28,126 @@ namespace Axis
 	void setupAxis();
 	void cleanupAxis();
 	void drawAxis();
+}
+
+namespace Object
+{
+	GLuint program;
+	GLuint VAO, VBO;
+	// Read our .obj file
+	std::vector<glm::vec3> objVertices;
+	std::vector<glm::vec2> objUVs;
+	std::vector<glm::vec3> objNormals; // Won't be used at the moment.
+
+	// A vertex shader that assigns a static position to the vertex
+	static const GLchar* vertex_shader_source[] = {
+		"#version 330\n"
+		"layout (location = 0) in vec3 aPos;"
+		"\n"
+		"void main(){\n"
+			"gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);"
+			"\n"
+		"}"
+	};
+
+	// A fragment shader that assigns a static color
+	static const GLchar* fragment_shader_source[] = {
+		"#version 330\n"
+		"\n"
+		"out vec4 color;\n"
+		"uniform vec4 triangleColor;\n"
+		"void main(){\n"
+			"color = triangleColor;\n"
+		"}"
+	};
+
+	void setup()
+	{
+		bool res = loadObject::loadOBJ("cube.obj", objVertices, objUVs, objNormals);
+
+		// ==============================================================================================================
+		//Inicialitzar ID del Shader 
+		GLuint vertex_shader;
+		GLuint fragment_shader;
+
+		//Crear ID Shader 
+		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+
+		//Cargar datos del Shader en la ID
+		glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
+		glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
+
+		//Operar con el Shader -> Pilla la string que te paso y traducelo a binario
+		compileShader(vertex_shader_source[0], GL_VERTEX_SHADER, "vertex");
+		compileShader(fragment_shader_source[0], GL_FRAGMENT_SHADER, "fragment");
+
+		//Crear programa y enlazarlo con los Shaders (Operaciones Bind())
+		program = glCreateProgram();
+		glAttachShader(program, vertex_shader);
+		glAttachShader(program, fragment_shader);
+
+		linkProgram(program);
+
+		// Destroy
+		glDeleteShader(vertex_shader);
+		glDeleteShader(fragment_shader);
+
+		//Create the vertex array object
+		//This object maintains the state related to the input of the OpenGL
+		glGenVertexArrays(1, &VAO);
+		glBindVertexArray(VAO);
+
+		// Create the vertext buffer object
+		// It contains arbitrary data for the vertices. (coordinates)
+		glGenBuffers(1, &VBO);
+
+		// Until we bind another buffer, calls related 
+		// to the array buffer will use VBO
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		// ==============================================================================================================
+
+		// Send vectors to OpenGL instead of arrays
+		glBufferData(GL_ARRAY_BUFFER, objVertices.size() * sizeof(glm::vec3), &objVertices[0], GL_STATIC_DRAW);
+
+		// ==============================================================================================================
+		// Specify the layout of the arbitrary data setting
+		glVertexAttribPointer(
+			0,					// Set same as specified in the shader
+			3,					// Size of the vertex attribute
+			GL_FLOAT,			// Specifies the data type of each component in the array
+			GL_FALSE,			// Data needs to be normalized? (NO)
+			3 * sizeof(float),	// Stride; byte offset between consecutive vertex attributes
+			(void*)0			// Offset of where the position data begins in the buffer
+		);
+
+		// Once specified, we enable it
+		glEnableVertexAttribArray(0);
+
+		// Clean
+		glBindVertexArray(0);
+	}
+
+	void cleanup()
+	{
+		glDeleteProgram(program);
+		glDeleteVertexArrays(1, &VAO);
+		glDeleteBuffers(1, &VBO);
+	}
+
+	void render()
+	{
+		glPointSize(40.0f);
+		glUseProgram(program);
+		glBindVertexArray(VAO);
+
+		time_t currentTime = SDL_GetTicks() / 1000;
+		const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f, (float)cos(currentTime) * 0.5f + 0.5f, 0.0f, 1.0f };
+
+		glUniform4f(glGetUniformLocation(program, "triangleColor"), color[0], color[1], color[2], color[3]);
+
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+	}
 }
 
 namespace Exercise 

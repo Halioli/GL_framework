@@ -87,6 +87,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>.\include;.\include\SDL2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>.\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -137,8 +138,12 @@ xcopy "$(ProjectDir)libs\SDL2.dll" "$(OutDir)" /y /d</Command>
     <ClCompile Include="include\imgui\imgui_demo.cpp" />
     <ClCompile Include="include\imgui\imgui_draw.cpp" />
     <ClCompile Include="include\imgui\imgui_impl_sdl_gl3.cpp" />
+    <ClCompile Include="src\LoadOBJ.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\render.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\LoadOBJ.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
