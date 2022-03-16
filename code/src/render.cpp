@@ -12,10 +12,8 @@
 #include "SDL_timer.h"
 #include "LoadOBJ.h"
 
-
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "");
 void linkProgram(GLuint program);
-
 
 ///////// fw decl
 namespace ImGui 
@@ -34,10 +32,26 @@ namespace Object
 {
 	GLuint program;
 	GLuint VAO, VBO;
+
+	glm::mat4 objMat = glm::mat4(1.f);
+
 	// Read our .obj file
 	std::vector<glm::vec3> objVertices;
 	std::vector<glm::vec2> objUVs;
-	std::vector<glm::vec3> objNormals; // Won't be used at the moment.
+	std::vector<glm::vec3> objNormals;
+
+	/*const char* cube_vertShader =
+		"#version 330\n\
+		in vec3 in_Position;\n\
+		in vec3 in_Normal;\n\
+		out vec4 vert_Normal;\n\
+		uniform mat4 objMat;\n\
+		uniform mat4 mv_Mat;\n\
+		uniform mat4 mvpMat;\n\
+		void main() {\n\
+			gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
+			vert_Normal = mv_Mat * objMat * vec4(in_Normal, 0.0);\n\
+		}";*/
 
 	// A vertex shader that assigns a static position to the vertex
 	static const GLchar* vertex_shader_source[] = {
@@ -137,16 +151,17 @@ namespace Object
 
 	void render()
 	{
-		glPointSize(40.0f);
+		//glPointSize(40.0f);
 		glUseProgram(program);
 		glBindVertexArray(VAO);
 
-		time_t currentTime = SDL_GetTicks() / 1000;
-		const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f, (float)cos(currentTime) * 0.5f + 0.5f, 0.0f, 1.0f };
+		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		//glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+		//glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+		glUniform4f(glGetUniformLocation(program, "color"), 0.1f, 1.f, 1.f, 0.f);
 
-		glUniform4f(glGetUniformLocation(program, "triangleColor"), color[0], color[1], color[2], color[3]);
-
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		// Draw shape
+		glDrawArrays(GL_TRIANGLES, 0, objVertices.size());
 	}
 }
 
@@ -682,7 +697,8 @@ void GLinit(int width, int height)
 
 	// Setup shaders & geometry
 	Axis::setupAxis();
-	Cube::setupCube();
+	Object::setup();
+	//Cube::setupCube();
 
 
 	/////////////////////////////////////////////////////TODO
@@ -696,7 +712,8 @@ void GLinit(int width, int height)
 void GLcleanup() 
 {
 	Axis::cleanupAxis();
-	Cube::cleanupCube();
+	Object::cleanup();
+	//Cube::cleanupCube();
 
 	/////////////////////////////////////////////////////TODO
 	// Do your cleanup code here
@@ -723,7 +740,8 @@ void GLrender(float dt)
 	RV::_MVP = RV::_projection * RV::_modelView;
 
 	Axis::drawAxis();
-	Cube::drawCube();
+	//Cube::drawCube();
+	Object::render();
 
 	/////////////////////////////////////////////////////TODO
 	// Do your render code here
