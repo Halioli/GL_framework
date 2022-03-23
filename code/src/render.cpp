@@ -163,17 +163,32 @@ namespace Object
 
 	void render()
 	{
+		//float normal = 1.f;
+		//float lightDirection = 1.f;
+		//float lightPower = 60;
+		//float distanceToLight = 5;
+		//GLfloat materialDiffuseColor[] = { 0.9f, 0.1f, 0.1f, 1.0f }; // base obj color (red)
+		//GLfloat lightColor[] = { 0.1f, 0.9f, 0.1f }; // color of the light (green)
+		//GLfloat finalColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+		//GLfloat cosTheta = glm::clamp((int)glm::dot(normal, lightDirection), 0, 1);
+		//for (int i = 0; i < 3; i++)
+		//{
+		//	finalColor[i] = materialDiffuseColor[i] * lightColor[i] * lightPower * cosTheta / (distanceToLight * distanceToLight);
+		//}
+		// ============
+
 		//glPointSize(40.0f);
 		glUseProgram(program);
 		glBindVertexArray(VAO);
 
 		/*glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 2.0f, 2.0f));
 		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix));*/
-
 		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		glUniform4f(glGetUniformLocation(program, "color"), 1.0f, 0.f, 0.f, 0.f);
+		glUniform4f(glGetUniformLocation(program, "color"), 0.9f, 0.1f, 0.1f, 1.0f);
+
+
 
 		// Draw shape
 		glDrawArrays(GL_TRIANGLES, 0, objVertices.size());
