@@ -28,6 +28,30 @@ namespace Axis
 	void drawAxis();
 }
 
+namespace RenderVars
+{
+	const float FOV = glm::radians(65.f);
+	const float zNear = 1.f;
+	const float zFar = 50.f;
+
+	glm::mat4 _projection;
+	glm::mat4 _modelView;
+	glm::mat4 _MVP;
+	glm::mat4 _inv_modelview;
+	glm::vec4 _cameraPoint;
+
+	struct prevMouse
+	{
+		float lastx, lasty;
+		MouseEvent::Button button = MouseEvent::Button::None;
+		bool waspressed = false;
+	} prevMouse;
+
+	float panv[3] = { 0.f, -5.f, -15.f };
+	float rota[2] = { 0.f, 0.f };
+}
+namespace RV = RenderVars;
+
 namespace Object
 {
 	GLuint program;
@@ -143,11 +167,20 @@ namespace Object
 		glUseProgram(program);
 		glBindVertexArray(VAO);
 
+		/*glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 2.0f, 2.0f));
+		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix));*/
+
 		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniform4f(glGetUniformLocation(program, "color"), 0.1f, 1.f, 1.f, 0.f);
+		glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+		glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+		glUniform4f(glGetUniformLocation(program, "color"), 1.0f, 0.f, 0.f, 0.f);
 
 		// Draw shape
 		glDrawArrays(GL_TRIANGLES, 0, objVertices.size());
+
+
+		glUseProgram(0);
+		glBindVertexArray(0);
 	}
 }
 
@@ -277,29 +310,6 @@ namespace Exercise
 
 ////////////////
 
-namespace RenderVars 
-{
-	const float FOV = glm::radians(65.f);
-	const float zNear = 1.f;
-	const float zFar = 50.f;
-
-	glm::mat4 _projection;
-	glm::mat4 _modelView;
-	glm::mat4 _MVP;
-	glm::mat4 _inv_modelview;
-	glm::vec4 _cameraPoint;
-
-	struct prevMouse 
-	{
-		float lastx, lasty;
-		MouseEvent::Button button = MouseEvent::Button::None;
-		bool waspressed = false;
-	} prevMouse;
-
-	float panv[3] = { 0.f, -5.f, -15.f };
-	float rota[2] = { 0.f, 0.f };
-}
-namespace RV = RenderVars;
 
 void GLResize(int width, int height) 
 {
