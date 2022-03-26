@@ -52,278 +52,6 @@ namespace RenderVars
 }
 namespace RV = RenderVars;
 
-namespace Object
-{
-	GLuint program;
-	GLuint VAO;
-	GLuint VBO[3];
-
-	glm::mat4 objMat = glm::mat4(1.f);
-
-	// Read our .obj file
-	std::vector<glm::vec3> objVertices;
-	std::vector<glm::vec2> objUVs;
-	std::vector<glm::vec3> objNormals;
-
-	// A vertex shader that assigns a static position to the vertex
-	static const char* vertex_shader_source[] = {
-		"#version 330\n\
-		layout (location = 0) in vec3 in_Vertices;\n\
-		layout (location = 1) in vec3 in_Normals;\n\
-		layout (location = 2) in vec2 in_UVs;\n\
-		out vec4 vert_Normal;\n\
-		uniform mat4 objMat;\n\
-		uniform mat4 mv_Mat;\n\
-		uniform mat4 mvpMat;\n\
-		void main() {\n\
-			gl_Position = mvpMat * objMat * vec4(in_Vertices, 1.0);\n\
-			vert_Normal = mv_Mat * objMat * vec4(in_Normals, 0.0);\n\
-		}"
-	};
-
-	// A fragment shader that assigns a static color
-	static const char* fragment_shader_source[] = {
-		"#version 330\n\
-		in vec4 vert_Normal;\n\
-		out vec4 out_Color;\n\
-		uniform mat4 mv_Mat;\n\
-		uniform vec4 color;\n\
-		void main() {\n\
-			out_Color = vec4(color.xyz * dot(vert_Normal, mv_Mat * vec4(0.0, 1.0, 0.0, 0.0)) + color.xyz * 0.3, 1.0 );\n\
-		}"
-	};
-
-	void setup()
-	{
-		bool res = loadObject::loadOBJ("cube.obj", objVertices, objUVs, objNormals);
-
-		// ==============================================================================================================
-		//Inicialitzar ID del Shader 
-		GLuint vertex_shader;
-		GLuint fragment_shader;
-
-		//Crear ID Shader 
-		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-
-		//Cargar datos del Shader en la ID
-		glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
-		glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
-
-		//Operar con el Shader -> Pilla la string que te paso y traducelo a binario
-		compileShader(vertex_shader_source[0], GL_VERTEX_SHADER, "vertex");
-		compileShader(fragment_shader_source[0], GL_FRAGMENT_SHADER, "fragment");
-
-		//Crear programa y enlazarlo con los Shaders (Operaciones Bind())
-		program = glCreateProgram();
-		glAttachShader(program, vertex_shader);
-		glAttachShader(program, fragment_shader);
-
-		linkProgram(program);
-
-		// Destroy
-		glDeleteShader(vertex_shader);
-		glDeleteShader(fragment_shader);
-
-		//Create the vertex array object
-		//This object maintains the state related to the input of the OpenGL
-		glGenVertexArrays(1, &VAO);
-		glBindVertexArray(VAO);
-		glGenBuffers(3, VBO);
-
-		// Vertex
-		glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-		glBufferData(GL_ARRAY_BUFFER, objVertices.size() * sizeof(glm::vec3), &objVertices[0], GL_STATIC_DRAW);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(0);
-
-		// Normals
-		glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-		glBufferData(GL_ARRAY_BUFFER, objNormals.size() * sizeof(glm::vec3), &objNormals[0], GL_STATIC_DRAW);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(1);
-
-		// UVs
-		glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
-		glBufferData(GL_ARRAY_BUFFER, objUVs.size() * sizeof(glm::vec2), &objUVs[0], GL_STATIC_DRAW);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(2);
-
-		// Clean
-		glBindVertexArray(0);
-	}
-
-	void cleanup()
-	{
-		glDeleteProgram(program);
-		glDeleteVertexArrays(1, &VAO);
-		
-		glDeleteBuffers(3, VBO);
-	}
-
-	void render()
-	{
-		//float normal = 1.f;
-		//float lightDirection = 1.f;
-		//float lightPower = 60;
-		//float distanceToLight = 5;
-		//GLfloat materialDiffuseColor[] = { 0.9f, 0.1f, 0.1f, 1.0f }; // base obj color (red)
-		//GLfloat lightColor[] = { 0.1f, 0.9f, 0.1f }; // color of the light (green)
-		//GLfloat finalColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-		//GLfloat cosTheta = glm::clamp((int)glm::dot(normal, lightDirection), 0, 1);
-		//for (int i = 0; i < 3; i++)
-		//{
-		//	finalColor[i] = materialDiffuseColor[i] * lightColor[i] * lightPower * cosTheta / (distanceToLight * distanceToLight);
-		//}
-		// ============
-
-		//glPointSize(40.0f);
-		glUseProgram(program);
-		glBindVertexArray(VAO);
-
-		/*glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 2.0f, 2.0f));
-		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix));*/
-		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		glUniform4f(glGetUniformLocation(program, "color"), 0.9f, 0.1f, 0.1f, 1.0f);
-
-
-
-		// Draw shape
-		glDrawArrays(GL_TRIANGLES, 0, objVertices.size());
-
-
-		glUseProgram(0);
-		glBindVertexArray(0);
-	}
-}
-
-namespace Exercise 
-{
-	GLuint program;
-	GLuint VAO, VBO;
-
-	float vertices[] = {
-		-0.5f, -0.5f, 0.0f,
-		 0.5f, -0.5f, 0.0f,
-		 0.0f,  0.5f, 0.0f
-	};
-
-	// A vertex shader that assigns a static position to the vertex
-	static const GLchar* vertex_shader_source[] = {
-		"#version 330\n"
-		"layout (location = 0) in vec3 aPos;"
-		"\n"
-		"void main(){\n"
-			"gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);"
-			"\n"
-		"}"
-	};
-
-	// A fragment shader that assigns a static color
-	static const GLchar* fragment_shader_source[] = {
-		"#version 330\n"
-		"\n"
-		"out vec4 color;\n"
-		"uniform vec4 triangleColor;\n"
-		"void main(){\n"
-			"color = triangleColor;\n"
-		"}"
-	};
-
-
-	void init() 
-	{
-		//Inicialitzar ID del Shader 
-		GLuint vertex_shader;
-		GLuint fragment_shader;
-
-		//Crear ID Shader 
-		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-
-		//Cargar datos del Shader en la ID
-		glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
-		glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
-
-		//Operar con el Shader -> Pilla la string que te paso y traducelo a binario
-		compileShader(vertex_shader_source[0], GL_VERTEX_SHADER, "vertex");
-		compileShader(fragment_shader_source[0], GL_FRAGMENT_SHADER, "fragment");
-
-		//Crear programa y enlazarlo con los Shaders (Operaciones Bind())
-		program = glCreateProgram();
-		glAttachShader(program, vertex_shader);
-		glAttachShader(program, fragment_shader);
-
-		linkProgram(program);
-
-		// Destroy
-		glDeleteShader(vertex_shader);
-		glDeleteShader(fragment_shader);
-
-		//Create the vertex array object
-		//This object maintains the state related to the input of the OpenGL
-		glGenVertexArrays(1, &VAO);
-		glBindVertexArray(VAO);
-
-		// Create the vertext buffer object
-		// It contains arbitrary data for the vertices. (coordinates)
-		glGenBuffers(1, &VBO);
-
-		// Until we bind another buffer, calls related 
-		// to the array buffer will use VBO
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-		// Copy the data to the array buffer
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-		// Specify the layout of the arbitrary data setting
-		glVertexAttribPointer(
-			0,					// Set same as specified in the shader
-			3,					// Size of the vertex attribute
-			GL_FLOAT,			// Specifies the data type of each component in the array
-			GL_FALSE,			// Data needs to be normalized? (NO)
-			3 * sizeof(float),	// Stride; byte offset between consecutive vertex attributes
-			(void*)0			// Offset of where the position data begins in the buffer
-		);
-
-		// Once specified, we enable it
-		glEnableVertexAttribArray(0);
-
-		// Clean
-		glBindVertexArray(0);
-	}
-
-	void cleanup() 
-	{
-		glDeleteProgram(program);
-		glDeleteVertexArrays(1, &VAO);
-		glDeleteBuffers(1, &VBO);
-	}
-
-	void render()
-	{
-		glPointSize(40.0f);
-		glBindVertexArray(VAO);
-		glUseProgram(program);
-
-		time_t currentTime = SDL_GetTicks() / 1000;
-		const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f, (float)cos(currentTime) * 0.5f + 0.5f, 0.0f, 1.0f };
-
-		glUniform4f(glGetUniformLocation(program, "triangleColor"), color[0], color[1], color[2], color[3]);
-
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-		//glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-		//glDrawArrays(GL_QUADS, 0, 4);
-		//glDrawArrays(GL_LINE_LOOP, 0, 4);
-		//glDrawArrays(GL_LINES, 0, 3);
-		//glDrawArrays(GL_LINE_STRIP, 0, 6);
-	}
-}
-
-////////////////
 
 
 void GLResize(int width, int height) 
@@ -397,6 +125,269 @@ void linkProgram(GLuint program)
 		glGetProgramInfoLog(program, res, &res, buff);
 		fprintf(stderr, "Error Link: %s", buff);
 		delete[] buff;
+	}
+}
+
+////////////////////////////////////////////////// OBJECT
+namespace Object
+{
+	GLuint program;
+	GLuint VAO;
+	GLuint VBO[3];
+
+	glm::mat4 objMat = glm::mat4(1.f);
+
+	// Read our .obj file
+	std::vector<glm::vec3> objVertices;
+	std::vector<glm::vec2> objUVs;
+	std::vector<glm::vec3> objNormals;
+
+	float ambientStrength = 0.1;
+	glm::vec3 ambient = ambientStrength * lightColor;
+	glm::vec3 result = ambient * objectColor;
+	glm::vec4 fragColor = vec4(result, 1.0);
+
+	// A vertex shader that assigns a static position to the vertex
+	static const char* vertex_shader_source[] = {
+		"#version 330\n\
+		layout (location = 0) in vec3 in_Vertices;\n\
+		layout (location = 1) in vec3 in_Normals;\n\
+		layout (location = 2) in vec2 in_UVs;\n\
+		out vec4 vert_Normal;\n\
+		uniform mat4 objMat;\n\
+		uniform mat4 mv_Mat;\n\
+		uniform mat4 mvpMat;\n\
+		void main() {\n\
+			gl_Position = mvpMat * objMat * vec4(in_Vertices, 1.0);\n\
+			vert_Normal = mv_Mat * objMat * vec4(in_Normals, 0.0);\n\
+		}"
+	};
+
+	// A fragment shader that assigns a static color
+	static const char* fragment_shader_source[] = {
+		"#version 330\n\
+		in vec4 vert_Normal;\n\
+		out vec4 out_Color;\n\
+		uniform vec3 lightPos;\n\
+		uniform mat4 mv_Mat;\n\
+		uniform vec4 color;\n\
+		void main() {\n\
+			out_Color = vec4(color.xyz * dot(vert_Normal, mv_Mat * vec4(0.0, 1.0, 0.0, 0.0)) + color.xyz * 0.3, 1.0 );\n\
+		}"
+	};
+
+	void setup()
+	{
+		bool res = loadObject::loadOBJ("cube.obj", objVertices, objUVs, objNormals);
+
+		//lightingShader.setVec3("lightPos", lightPos);
+		// ==============================================================================================================
+		//Inicialitzar ID del Shader 
+		GLuint vertex_shader;
+		GLuint fragment_shader;
+
+		//Crear ID Shader 
+		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+
+		//Cargar datos del Shader en la ID
+		glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
+		glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
+
+		//Operar con el Shader -> Pilla la string que te paso y traducelo a binario
+		compileShader(vertex_shader_source[0], GL_VERTEX_SHADER, "vertex");
+		compileShader(fragment_shader_source[0], GL_FRAGMENT_SHADER, "fragment");
+
+		//Crear programa y enlazarlo con los Shaders (Operaciones Bind())
+		program = glCreateProgram();
+		glAttachShader(program, vertex_shader);
+		glAttachShader(program, fragment_shader);
+
+		linkProgram(program);
+
+		// Destroy
+		glDeleteShader(vertex_shader);
+		glDeleteShader(fragment_shader);
+
+		//Create the vertex array object
+		//This object maintains the state related to the input of the OpenGL
+		glGenVertexArrays(1, &VAO);
+		glBindVertexArray(VAO);
+		glGenBuffers(3, VBO);
+
+		// Vertex
+		glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+		glBufferData(GL_ARRAY_BUFFER, objVertices.size() * sizeof(glm::vec3), &objVertices[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+
+		// Normals
+		glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+		glBufferData(GL_ARRAY_BUFFER, objNormals.size() * sizeof(glm::vec3), &objNormals[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(1);
+
+		// UVs
+		glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
+		glBufferData(GL_ARRAY_BUFFER, objUVs.size() * sizeof(glm::vec2), &objUVs[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(2);
+
+		// Clean
+		glBindVertexArray(0);
+	}
+
+	void cleanup()
+	{
+		glDeleteProgram(program);
+		glDeleteVertexArrays(1, &VAO);
+
+		glDeleteBuffers(3, VBO);
+	}
+
+	void render()
+	{
+		glUseProgram(program);
+		glBindVertexArray(VAO);
+
+		/*glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 2.0f, 2.0f));
+		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix));*/
+		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+		glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+		glUniform4f(glGetUniformLocation(program, "color"), 0.9f, 0.1f, 0.1f, 1.0f);
+
+
+		// Draw shape
+		glDrawArrays(GL_TRIANGLES, 0, objVertices.size());
+
+		glUseProgram(0);
+		glBindVertexArray(0);
+	}
+}
+
+////////////////////////////////////////////////// EXERCISE
+namespace Exercise
+{
+	GLuint program;
+	GLuint VAO, VBO;
+
+	float vertices[] = {
+		-0.5f, -0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		 0.0f,  0.5f, 0.0f
+	};
+
+	// A vertex shader that assigns a static position to the vertex
+	static const GLchar* vertex_shader_source[] = {
+		"#version 330\n"
+		"layout (location = 0) in vec3 aPos;"
+		"\n"
+		"void main(){\n"
+			"gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);"
+			"\n"
+		"}"
+	};
+
+	// A fragment shader that assigns a static color
+	static const GLchar* fragment_shader_source[] = {
+		"#version 330\n"
+		"\n"
+		"out vec4 color;\n"
+		"uniform vec4 triangleColor;\n"
+		"void main(){\n"
+			"color = triangleColor;\n"
+		"}"
+	};
+
+
+	void init()
+	{
+		//Inicialitzar ID del Shader 
+		GLuint vertex_shader;
+		GLuint fragment_shader;
+
+		//Crear ID Shader 
+		vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+		fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+
+		//Cargar datos del Shader en la ID
+		glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
+		glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
+
+		//Operar con el Shader -> Pilla la string que te paso y traducelo a binario
+		compileShader(vertex_shader_source[0], GL_VERTEX_SHADER, "vertex");
+		compileShader(fragment_shader_source[0], GL_FRAGMENT_SHADER, "fragment");
+
+		//Crear programa y enlazarlo con los Shaders (Operaciones Bind())
+		program = glCreateProgram();
+		glAttachShader(program, vertex_shader);
+		glAttachShader(program, fragment_shader);
+
+		linkProgram(program);
+
+		// Destroy
+		glDeleteShader(vertex_shader);
+		glDeleteShader(fragment_shader);
+
+		//Create the vertex array object
+		//This object maintains the state related to the input of the OpenGL
+		glGenVertexArrays(1, &VAO);
+		glBindVertexArray(VAO);
+
+		// Create the vertext buffer object
+		// It contains arbitrary data for the vertices. (coordinates)
+		glGenBuffers(1, &VBO);
+
+		// Until we bind another buffer, calls related 
+		// to the array buffer will use VBO
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+		// Copy the data to the array buffer
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+		// Specify the layout of the arbitrary data setting
+		glVertexAttribPointer(
+			0,					// Set same as specified in the shader
+			3,					// Size of the vertex attribute
+			GL_FLOAT,			// Specifies the data type of each component in the array
+			GL_FALSE,			// Data needs to be normalized? (NO)
+			3 * sizeof(float),	// Stride; byte offset between consecutive vertex attributes
+			(void*)0			// Offset of where the position data begins in the buffer
+		);
+
+		// Once specified, we enable it
+		glEnableVertexAttribArray(0);
+
+		// Clean
+		glBindVertexArray(0);
+	}
+
+	void cleanup()
+	{
+		glDeleteProgram(program);
+		glDeleteVertexArrays(1, &VAO);
+		glDeleteBuffers(1, &VBO);
+	}
+
+	void render()
+	{
+		glPointSize(40.0f);
+		glBindVertexArray(VAO);
+		glUseProgram(program);
+
+		time_t currentTime = SDL_GetTicks() / 1000;
+		const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f, (float)cos(currentTime) * 0.5f + 0.5f, 0.0f, 1.0f };
+
+		glUniform4f(glGetUniformLocation(program, "triangleColor"), color[0], color[1], color[2], color[3]);
+
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		//glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+		//glDrawArrays(GL_QUADS, 0, 4);
+		//glDrawArrays(GL_LINE_LOOP, 0, 4);
+		//glDrawArrays(GL_LINES, 0, 3);
+		//glDrawArrays(GL_LINE_STRIP, 0, 6);
 	}
 }
 
