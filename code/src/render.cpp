@@ -142,11 +142,6 @@ namespace Object
 	std::vector<glm::vec2> objUVs;
 	std::vector<glm::vec3> objNormals;
 
-	float ambientStrength = 0.1;
-	glm::vec3 ambient = ambientStrength * lightColor;
-	glm::vec3 result = ambient * objectColor;
-	glm::vec4 fragColor = vec4(result, 1.0);
-
 	// A vertex shader that assigns a static position to the vertex
 	static const char* vertex_shader_source[] = {
 		"#version 330\n\
@@ -154,12 +149,14 @@ namespace Object
 		layout (location = 1) in vec3 in_Normals;\n\
 		layout (location = 2) in vec2 in_UVs;\n\
 		out vec4 vert_Normal;\n\
+		out vec3 fragPos;\n\
 		uniform mat4 objMat;\n\
 		uniform mat4 mv_Mat;\n\
 		uniform mat4 mvpMat;\n\
 		void main() {\n\
 			gl_Position = mvpMat * objMat * vec4(in_Vertices, 1.0);\n\
 			vert_Normal = mv_Mat * objMat * vec4(in_Normals, 0.0);\n\
+			fragPos = vec3(objMat * vec4(in_Vertices, 1.0));\n\
 		}"
 	};
 
@@ -167,6 +164,7 @@ namespace Object
 	static const char* fragment_shader_source[] = {
 		"#version 330\n\
 		in vec4 vert_Normal;\n\
+		in vec3 fragPos;\n\
 		out vec4 out_Color;\n\
 		uniform vec3 lightPos;\n\
 		uniform mat4 mv_Mat;\n\
@@ -247,6 +245,13 @@ namespace Object
 
 	void render()
 	{
+		float ambientStrength = 0.6f;
+		glm::vec3 lightColor = { 0.9f, 0.1f, 0.1f };
+		glm::vec3 objectColor = { 0.9f, 0.1f, 0.1f };
+		glm::vec3 ambient = ambientStrength * lightColor;
+		glm::vec3 result = ambient * objectColor;
+		glm::vec4 fragColor = glm::vec4(result, 1.0f); 
+
 		glUseProgram(program);
 		glBindVertexArray(VAO);
 
@@ -255,7 +260,7 @@ namespace Object
 		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		glUniform4f(glGetUniformLocation(program, "color"), 0.9f, 0.1f, 0.1f, 1.0f);
+		glUniform4f(glGetUniformLocation(program, "out_Color"), fragColor.x, fragColor.y, fragColor.z, 1.0f);
 
 
 		// Draw shape
