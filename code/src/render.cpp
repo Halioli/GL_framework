@@ -142,6 +142,22 @@ namespace Object
 	std::vector<glm::vec2> objUVs;
 	std::vector<glm::vec3> objNormals;
 
+	struct Light
+	{
+		glm::vec3 position = glm::vec3(0.f, 0.f, 0.f);
+		glm::vec3 direction = glm::vec3(0.f, 0.f, 0.f);
+		glm::vec3 ambient = glm::vec3(0.6f, 0.6f, 0.6f);
+		glm::vec3 diffuse;
+		glm::vec3 specular;
+
+		float constant = 1.f;
+		float linear = 0.09f;
+		float quadratic = 0.032f;
+
+		float cutOff = glm::cos(glm::radians(12.5f));
+	};
+	Light light;
+
 	// A vertex shader that assigns a static position to the vertex
 	static const char* vertex_shader_source[] = {
 		"#version 330\n\
@@ -149,14 +165,15 @@ namespace Object
 		layout (location = 1) in vec3 in_Normals;\n\
 		layout (location = 2) in vec2 in_UVs;\n\
 		out vec4 vert_Normal;\n\
-		out vec3 fragPos;\n\
+		out vec3 FragPos;\n\
 		uniform mat4 objMat;\n\
 		uniform mat4 mv_Mat;\n\
 		uniform mat4 mvpMat;\n\
+		uniform vec3 viewPos;\n\
 		void main() {\n\
 			gl_Position = mvpMat * objMat * vec4(in_Vertices, 1.0);\n\
 			vert_Normal = mv_Mat * objMat * vec4(in_Normals, 0.0);\n\
-			fragPos = vec3(objMat * vec4(in_Vertices, 1.0));\n\
+			FragPos = vec3(objMat * vec4(in_Vertices, 1.0));\n\
 		}"
 	};
 
@@ -164,11 +181,20 @@ namespace Object
 	static const char* fragment_shader_source[] = {
 		"#version 330\n\
 		in vec4 vert_Normal;\n\
-		in vec3 fragPos;\n\
+		in vec3 FragPos;\n\
 		out vec4 out_Color;\n\
 		uniform vec3 lightPos;\n\
 		uniform mat4 mv_Mat;\n\
 		uniform vec4 color;\n\
+		\n\
+		struct Material {\n\
+			vec3 ambient;\n\
+			vec3 diffuse;\n\
+			vec3 specular;\n\
+			float shininess;\n\
+		};\n\
+		uniform Material material;\n\
+		\n\
 		void main() {\n\
 			out_Color = vec4(color.xyz * dot(vert_Normal, mv_Mat * vec4(0.0, 1.0, 0.0, 0.0)) + color.xyz * 0.3, 1.0 );\n\
 		}"
@@ -178,7 +204,6 @@ namespace Object
 	{
 		bool res = loadObject::loadOBJ("cube.obj", objVertices, objUVs, objNormals);
 
-		//lightingShader.setVec3("lightPos", lightPos);
 		// ==============================================================================================================
 		//Inicialitzar ID del Shader 
 		GLuint vertex_shader;
@@ -245,23 +270,64 @@ namespace Object
 
 	void render()
 	{
-		float ambientStrength = 0.6f;
-		glm::vec3 lightColor = { 0.9f, 0.1f, 0.1f };
-		glm::vec3 objectColor = { 0.9f, 0.1f, 0.1f };
-		glm::vec3 ambient = ambientStrength * lightColor;
-		glm::vec3 result = ambient * objectColor;
-		glm::vec4 fragColor = glm::vec4(result, 1.0f); 
-
 		glUseProgram(program);
 		glBindVertexArray(VAO);
 
-		/*glm::mat4 cubeTranslateMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 2.0f, 2.0f));
-		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(cubeTranslateMatrix));*/
+		glm::vec3 result;
+		glm::vec4 fragColor;
+		glm::vec3 fragPos;
+		GLint fragPosUniformLocation = glGetUniformLocation(program, "FragPos");
+		glUniform3fv(fragPosUniformLocation, 1, &fragPos[0]);
+
+		// Diffuse Lighting
+		float ambientStrength = 0.6f;
+		glm::vec3 lightColor = { 0.9f, 0.1f, 0.1f };
+		glm::vec3 objectColor = { 0.9f, 0.1f, 0.1f };
+		glm::vec3 norm = glm::normalize(objNormals[0]);
+		glm::vec3 lightDir = glm::normalize(-light.direction);
+		//glm::vec3 lightDir = glm::normalize(lightPos - fragPos);
+		float diff = glm::max(glm::dot(norm, lightDir), 0.f);
+		light.diffuse = diff * lightColor;
+		light.ambient = ambientStrength * lightColor;
+		//
+
+		// Specular Lighting
+		glm::vec3 viewPos;
+		float specularStrength = 0.5f;
+		glm::vec3 viewDir = glm::normalize(viewPos - fragPos);
+		glm::vec3 reflectDir = glm::reflect(-lightDir, norm);
+		float spec = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.f), 32);
+		light.specular = specularStrength * spec * lightColor;
+		//
+
+		// Point Light
+		float distance = glm::length(light.position - fragPos);
+		float attenuation = 1.f / (light.constant + light.linear * 
+							distance + light.quadratic * (distance * distance));
+		light.ambient *= attenuation;
+		light.diffuse *= attenuation;
+		light.specular *= attenuation;
+		//
+
+		// Spot Light
+		float theta = glm::dot(lightDir, glm::normalize(-light.direction));
+		
+		if (theta > light.cutOff)
+		{
+			result = (light.ambient + light.diffuse + light.specular) * objectColor;
+		}
+		else
+		{
+			result = light.ambient * objectColor;
+		}
+		//
+
+		fragColor = glm::vec4(result, 1.0f);
+
 		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		glUniform4f(glGetUniformLocation(program, "out_Color"), fragColor.x, fragColor.y, fragColor.z, 1.0f);
-
+		glUniform4f(glGetUniformLocation(program, "color"), fragColor.x, fragColor.y, fragColor.z, 1.0f);
 
 		// Draw shape
 		glDrawArrays(GL_TRIANGLES, 0, objVertices.size());
