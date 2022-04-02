@@ -142,6 +142,15 @@ namespace Object
 	std::vector<glm::vec2> objUVs;
 	std::vector<glm::vec3> objNormals;
 
+	// this should be at the fragment shader
+	struct Material {
+		glm::vec3 ambient = glm::vec3(1.f, 0.5f, 0.31f);
+		glm::vec3 diffuse = glm::vec3(1.f, 0.5f, 0.31f);
+		glm::vec3 specular = glm::vec3(0.5f, 0.5f, 0.5f);
+		float shininess = 32.f;
+	};
+	Material material;
+
 	struct Light
 	{
 		glm::vec3 position = glm::vec3(0.f, 0.f, 0.f);
@@ -273,31 +282,35 @@ namespace Object
 		glUseProgram(program);
 		glBindVertexArray(VAO);
 
+		glm::vec3 lightColor = { 0.9f, 0.1f, 0.1f };
+		glm::vec3 objectColor = { 0.9f, 0.1f, 0.1f };
 		glm::vec3 result;
 		glm::vec4 fragColor;
+
 		glm::vec3 fragPos;
 		GLint fragPosUniformLocation = glGetUniformLocation(program, "FragPos");
 		glUniform3fv(fragPosUniformLocation, 1, &fragPos[0]);
 
-		// Diffuse Lighting
+		// Ambient Lighting
 		float ambientStrength = 0.6f;
-		glm::vec3 lightColor = { 0.9f, 0.1f, 0.1f };
-		glm::vec3 objectColor = { 0.9f, 0.1f, 0.1f };
-		glm::vec3 norm = glm::normalize(objNormals[0]);
-		glm::vec3 lightDir = glm::normalize(-light.direction);
-		//glm::vec3 lightDir = glm::normalize(lightPos - fragPos);
-		float diff = glm::max(glm::dot(norm, lightDir), 0.f);
-		light.diffuse = diff * lightColor;
+		glm::vec3 ambient = lightColor * material.ambient;
 		light.ambient = ambientStrength * lightColor;
 		//
 
+		// Diffuse Lighting
+		glm::vec3 norm = glm::normalize(objNormals[0]);
+		glm::vec3 lightDir = glm::normalize(-light.direction);
+		float diff = glm::max(glm::dot(norm, lightDir), 0.f);
+		light.diffuse = lightColor * (diff * material.diffuse); //diff * lightColor;
+		//
+
 		// Specular Lighting
-		glm::vec3 viewPos;
 		float specularStrength = 0.5f;
+		glm::vec3 viewPos;
 		glm::vec3 viewDir = glm::normalize(viewPos - fragPos);
 		glm::vec3 reflectDir = glm::reflect(-lightDir, norm);
-		float spec = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.f), 32);
-		light.specular = specularStrength * spec * lightColor;
+		float spec = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.f), material.shininess);
+		light.specular = specularStrength * (spec * material.specular);
 		//
 
 		// Point Light
@@ -311,15 +324,11 @@ namespace Object
 
 		// Spot Light
 		float theta = glm::dot(lightDir, glm::normalize(-light.direction));
-		
+
 		if (theta > light.cutOff)
-		{
 			result = (light.ambient + light.diffuse + light.specular) * objectColor;
-		}
 		else
-		{
 			result = light.ambient * objectColor;
-		}
 		//
 
 		fragColor = glm::vec4(result, 1.0f);
