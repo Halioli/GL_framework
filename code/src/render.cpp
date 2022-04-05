@@ -282,6 +282,7 @@ namespace Object
 		glUseProgram(program);
 		glBindVertexArray(VAO);
 
+		// THIS NEEDS TO BE AT THE FRAGMENT SHADER
 		glm::vec3 lightColor = { 0.9f, 0.1f, 0.1f };
 		glm::vec3 objectColor = { 0.9f, 0.1f, 0.1f };
 		glm::vec3 result;
@@ -330,8 +331,8 @@ namespace Object
 		else
 			result = light.ambient * objectColor;
 		//
-
 		fragColor = glm::vec4(result, 1.0f);
+		// //
 
 		glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
